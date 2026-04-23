@@ -196,9 +196,10 @@ async def do_build(uid, prompt, message, context):
         try:
             await status.edit_text("📤 Getting live URL...")
             url = await publish_gist(html)
+            # NO parse_mode — URL contains ? and & which break Telegram's HTML/Markdown parser
             await status.edit_text(
-                f"✅ <b>Website Ready!</b>\n\n🔗 <b>Live Preview:</b>\n{url}\n\nWant changes? Just describe them.",
-                parse_mode=ParseMode.HTML, disable_web_page_preview=False)
+                f"✅ Website Ready!\n\n🔗 Live Preview:\n{url}\n\nOpen in browser to see your site!\n\nWant changes? Just describe them.",
+                disable_web_page_preview=False)
             logger.info(f"Live URL sent to {uid}: {url}")
         except Exception as ue:
             logger.error(f"Gist failed: {ue}")
