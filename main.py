@@ -343,11 +343,11 @@ async def handle_build(user_id: int, prompt: str, message, context: ContextTypes
             live_url = await publish_to_htmlpreview(html_content)
 
             await status_msg.edit_text(
-                f"✅ *Website Ready!*\n\n"
-                f"🔗 *Live Preview:*\n{live_url}\n\n"
-                f"_Tap the link to open in browser_\n\n"
-                f"Want changes? Just tell me what to update!",
-                parse_mode=ParseMode.MARKDOWN,
+                f"✅ <b>Website Ready!</b>\n\n"
+                f"🔗 <b>Live Preview:</b>\n{live_url}\n\n"
+                f"Tap the link to open in browser!\n\n"
+                f"Want changes? Just tell me what to update.",
+                parse_mode=ParseMode.HTML,
                 disable_web_page_preview=False,
             )
         except Exception as upload_err:
@@ -356,7 +356,7 @@ async def handle_build(user_id: int, prompt: str, message, context: ContextTypes
             import io
             html_bytes = html_content.encode("utf-8")
             filename = f"website_{uuid.uuid4().hex[:6]}.html"
-            await status_msg.edit_text("✅ Generated! Sending as file (live URL unavailable right now)...")
+            await status_msg.edit_text("✅ Generated! Sending as file...")
             await context.bot.send_document(
                 chat_id=message.chat_id,
                 document=io.BytesIO(html_bytes),
@@ -388,7 +388,7 @@ async def handle_build(user_id: int, prompt: str, message, context: ContextTypes
             msg = f"❌ *Error:* {err[:200]}\n\nTry /new to reset."
 
         try:
-            await status_msg.edit_text(msg, parse_mode=ParseMode.MARKDOWN)
+            await status_msg.edit_text(msg)
         except Exception:
             await context.bot.send_message(chat_id=message.chat_id, text=msg)
 
