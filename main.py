@@ -110,27 +110,39 @@ async def call_nvidia_nim(messages: list, model_key: str = DEFAULT_MODEL, max_to
         "max_tokens": max_tokens,
         "stream": False,
     }
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                f"{NVIDIA_NIM_BASE_URL}/chat/completions",
-                headers=headers,
-                json=payload,
-                timeout=aiohttp.ClientTimeout(total=180),
-            ) as resp:
-                if resp.status != 200:
-                    error_text = await resp.text()
-                    raise Exception(f"NVIDIA API {resp.status}: {error_text[:200]}")
-                data = await resp.json()
-                msg = data["choices"][0]["message"]
-                result = extract_content(msg)
-                if not result:
-                    raise Exception("Model returned empty — try /model glm or retry")
-                return result
-    except asyncio.TimeoutError:
-        raise Exception("Timed out. Try /model step for fastest responses.")
-    except aiohttp.ClientError as e:
-        raise Exception(f"Network error: {str(e)}")
+    last_err = None
+    for attempt in range(3):
+        try:
+            if attempt > 0:
+                await asyncio.sleep(4 * attempt)
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    f"{NVIDIA_NIM_BASE_URL}/chat/completions",
+                    headers=headers,
+                    json=payload,
+                    timeout=aiohttp.ClientTimeout(total=180),
+                ) as resp:
+                    if resp.status in (502, 503, 504):
+                        last_err = Exception(f"NVIDIA server busy ({resp.status}), retrying...")
+                        logger.warning(f"Attempt {attempt+1}: NVIDIA {resp.status}, retrying...")
+                        continue
+                    if resp.status != 200:
+                        error_text = await resp.text()
+                        raise Exception(f"NVIDIA API {resp.status}: {error_text[:200]}")
+                    data = await resp.json()
+                    msg = data["choices"][0]["message"]
+                    result = extract_content(msg)
+                    if not result:
+                        raise Exception("Model returned empty — try /model glm or retry")
+                    return result
+        except asyncio.TimeoutError:
+            last_err = Exception("Timed out. Try /model step for fastest responses.")
+            continue
+        except aiohttp.ClientError as e:
+            last_err = Exception(f"Network error: {str(e)}")
+            continue
+    raise last_err or Exception("Failed after 3 attempts")
+
 
 
 async def publish_to_htmlpreview(html_content: str) -> str:
